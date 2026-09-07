@@ -280,12 +280,12 @@ private fun NetworkBrowserContent(
 
             // Media section (video / audio)
             if (mediaFiles.isNotEmpty()) {
-              val sectionTitle = when {
-                mediaFiles.all { it.isAudioFile() } -> stringResource(R.string.ui_audios)
-                mediaFiles.all { it.isVideoFile() } -> stringResource(R.string.ui_videos)
-                else -> stringResource(R.string.ui_media)
-              }
               item {
+                val sectionTitle = when {
+                  mediaFiles.all { it.isAudioFile() } -> stringResource(R.string.ui_audios)
+                  mediaFiles.all { it.isVideoFile() } -> stringResource(R.string.ui_videos)
+                  else -> stringResource(R.string.ui_media)
+                }
                 Text(
                   text = sectionTitle,
                   style = MaterialTheme.typography.titleMedium,

@@ -888,10 +888,10 @@ class PlayerActivity :
           }
 
           if (isAudioOnly) {
-            val mediaTitle by viewModel.mediaTitle.collectAsState()
+            val mediaTitle by MPVLib.propString["media-title"].collectAsState()
             app.gyrolet.mpvrx.ui.player.audio.AudioPlayerOverlay(
               viewModel = viewModel,
-              mediaTitle = mediaTitle,
+              mediaTitle = mediaTitle.orEmpty(),
               onOpenLyrics = { showLyricsOverlay = true },
             )
             if (showLyricsOverlay) {
