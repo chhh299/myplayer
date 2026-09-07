@@ -37,37 +37,40 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Build with Gradle
-        run: ./gradlew assembleStandardRelease assembleStandardDebug
+        run: ./gradlew assembleStandardRelease
 
       - name: Sign APKs
         run: |
           set -e
           STANDARD_RELEASE_DIR="app/build/outputs/apk/standard/release"
-          
-          if [ -z "${{ secrets.SIGNING_KEYSTORE }}" ]; then
-            echo "SIGNING_KEYSTORE secret is not available. Skipping signing step."
-            exit 0
-          fi
-          
-          echo "${{ secrets.SIGNING_KEYSTORE }}" | base64 -d > release.keystore
-          
+
+          echo "Generating self-signed release keystore..."
+          keytool -genkeypair -v -keystore release.keystore \
+            -alias myplayer -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass "12345678" -keypass "12345678" \
+            -dname "CN=myplayer, OU=myplayer, O=myplayer, L=Beijing, ST=Beijing, C=CN"
+
+          APKSIGNER=$(find $ANDROID_HOME/build-tools -name apksigner | sort -V | tail -n 1)
+          echo "Using apksigner: $APKSIGNER"
+
           find "$STANDARD_RELEASE_DIR" -name "app-standard-*-release-unsigned.apk" -type f | while read -r apk; do
             signed_apk="${apk/-unsigned/}"
-          
-            $ANDROID_HOME/build-tools/34.0.0/apksigner sign \
+            echo "Signing $apk -> $signed_apk"
+
+            "$APKSIGNER" sign \
               --ks release.keystore \
-              --ks-key-alias "${{ secrets.SIGNING_KEY_ALIAS }}" \
-              --ks-pass "pass:${{ secrets.SIGNING_STORE_PASSWORD }}" \
-              --key-pass "pass:${{ secrets.KEY_PASSWORD }}" \
+              --ks-key-alias "myplayer" \
+              --ks-pass "pass:12345678" \
+              --key-pass "pass:12345678" \
               --out "$signed_apk" \
               "$apk"
-          
-            $ANDROID_HOME/build-tools/34.0.0/apksigner verify "$signed_apk"
+
+            "$APKSIGNER" verify "$signed_apk"
             rm "$apk"
           done
-          
+
           rm release.keystore
-          echo "APKs signed and verified successfully."
+          echo "All Release APKs signed and verified successfully."
 
       - name: Upload app-arm64-v8a Artifact
         uses: actions/upload-artifact@v4
@@ -102,11 +105,4 @@ jobs:
         with:
           name: app-standard-x86_64-release-${{ env.SHORT_SHA }}
           path: app/build/outputs/apk/standard/release/app-standard-x86_64-release*.apk
-          if-no-files-found: warn
-
-      - name: Upload Ready-to-Install Debug APKs
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-standard-debug-apks-${{ env.SHORT_SHA }}
-          path: app/build/outputs/apk/standard/debug/*.apk
           if-no-files-found: warn
