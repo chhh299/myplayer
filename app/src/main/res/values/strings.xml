@@ -1456,7 +1456,6 @@
   <string name="filter_preset_enhanced_blacks_for_oled_displays">Enhanced blacks for OLED displays</string>
 
   <!-- App Language Settings -->
-  <string name="pref_app_language_title">App Language</string>
   <string name="pref_language_zh_cn">Simplified Chinese (Default)</string>
   <string name="pref_language_system">Follow System</string>
   <string name="pref_language_en">English</string>
