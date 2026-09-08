@@ -308,20 +308,11 @@ class AiService(
       AiGenerationOptions(maxTokens = 512, temperature = 0.0),
     )
     if (testResult.isSuccess) {
-      sb.append("API access working")
+      val reply = testResult.getOrNull()?.text?.trim()?.take(60) ?: "OK"
+      sb.append("[${provider.displayName} -> $model] \u8fde\u901a\u6210\u529f: $reply")
     } else {
       val msg = testResult.exceptionOrNull()?.message ?: "unknown error"
-      when {
-        msg.contains("quota", ignoreCase = true) || msg.contains("rate limit", ignoreCase = true) || msg.contains("insufficient_quota", ignoreCase = true) ->
-          sb.append("Quota exceeded / rate limited")
-        msg.contains("not found", ignoreCase = true) || msg.contains("not available", ignoreCase = true) || msg.contains("model_not_found", ignoreCase = true) ->
-          sb.append("Model not available")
-        msg.contains("billing", ignoreCase = true) || msg.contains("payment", ignoreCase = true) || msg.contains("credit", ignoreCase = true) ||
-          msg.contains("insufficient", ignoreCase = true) ->
-          sb.append("Paid model \u2014 billing required")
-        else ->
-          sb.append("Access error: ${testResult.exceptionOrNull()?.message?.take(100)}")
-      }
+      sb.append("[${provider.displayName} -> $model] \u9519\u8bef: $msg")
     }
     Result.success(sb.toString())
   }

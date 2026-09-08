@@ -887,21 +887,6 @@ class PlayerActivity :
             BlobOverlay(isPlaying = paused == false)
           }
 
-          if (isAudioOnly) {
-            val mediaTitle by MPVLib.propString["media-title"].collectAsState()
-            app.gyrolet.mpvrx.ui.player.audio.AudioPlayerOverlay(
-              viewModel = viewModel,
-              mediaTitle = mediaTitle.orEmpty(),
-              onOpenLyrics = { showLyricsOverlay = true },
-            )
-            if (showLyricsOverlay) {
-              app.gyrolet.mpvrx.ui.player.audio.LyricsOverlay(
-                viewModel = viewModel,
-                onDismiss = { showLyricsOverlay = false },
-              )
-            }
-          }
-
           PlayerControls(
             viewModel = viewModel,
             onBackPress = ::handleBackPress,

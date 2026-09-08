@@ -5,7 +5,7 @@ import app.gyrolet.mpvrx.preferences.preference.PreferenceStore
 import app.gyrolet.mpvrx.preferences.preference.getEnum
 
 enum class AiProvider(val displayName: String) {
-  CUSTOM("Custom (OpenAI-compatible)"),
+  CUSTOM("自定义 (OpenAI 兼容)"),
   OPENCODE("OpenCode"),
   GROQ("Groq"),
   OPENAI("OpenAI"),

@@ -264,6 +264,25 @@ class RealtimeSubtitleService(
         )
       }
 
+      AiProvider.CUSTOM -> {
+        val key = preferences.customApiKey.get()
+        if (key.isBlank()) return null
+        val rawBase = preferences.customBaseUrl.get().trim().trimEnd('/')
+        val baseUrl = when {
+          rawBase.endsWith("/audio/transcriptions") -> rawBase
+          rawBase.endsWith("/v1") -> "$rawBase/audio/transcriptions"
+          else -> "$rawBase/v1/audio/transcriptions"
+        }
+        val customModel = preferences.selectedModelFor(AiProvider.CUSTOM).get()
+        transcribeOpenAiCompatible(
+          baseUrl = baseUrl,
+          apiKey = key,
+          model = customModel.takeIf { it.isNotBlank() } ?: "whisper-1",
+          audioFile = audioFile,
+          language = language,
+        )
+      }
+
       AiProvider.OPENROUTER -> {
         val key = preferences.openrouterApiKey.get()
         if (key.isBlank()) return null

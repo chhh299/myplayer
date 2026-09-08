@@ -247,6 +247,24 @@ class SubtitleGenerationService(
           language,
         )
       }
+      AiProvider.CUSTOM -> {
+        val key = preferences.customApiKey.get()
+        val rawBase = preferences.customBaseUrl.get().trim().trimEnd('/')
+        val baseUrl = when {
+          rawBase.endsWith("/audio/transcriptions") -> rawBase
+          rawBase.endsWith("/v1") -> "$rawBase/audio/transcriptions"
+          else -> "$rawBase/v1/audio/transcriptions"
+        }
+        val customModel = preferences.selectedModelFor(AiProvider.CUSTOM).get()
+        if (key.isBlank()) Result.failure(Exception("Custom API key not configured."))
+        else transcribeOpenAiCompatible(
+          baseUrl,
+          key,
+          customModel.takeIf { it.isNotBlank() } ?: "whisper-1",
+          audioFile,
+          language,
+        )
+      }
       AiProvider.OPENROUTER -> {
         val key = preferences.openrouterApiKey.get()
         if (key.isBlank()) Result.failure(Exception("OpenRouter API key not configured."))

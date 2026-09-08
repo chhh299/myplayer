@@ -1,5 +1,6 @@
 package app.gyrolet.mpvrx.repository.ai
 
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
@@ -40,7 +41,7 @@ private data class CustomAiChatRequest(
   val model: String,
   val messages: List<CustomAiMessage>,
   val temperature: Double? = null,
-  @SerialName("max_completion_tokens") val maxCompletionTokens: Int = 200,
+  @SerialName("max_tokens") val maxTokens: Int = 2048,
 )
 
 class CustomAiClient(
@@ -50,14 +51,27 @@ class CustomAiClient(
 ) : AiClient {
 
   companion object {
+    private const val TAG = "CustomAiClient"
     private const val DEFAULT_BASE_URL = "https://api.openai.com/v1"
     private val JSON_MEDIA_TYPE = "application/json".toMediaType()
   }
 
   fun normalizedBaseUrl(): String {
-    val raw = baseUrlProvider().trim()
+    var raw = baseUrlProvider().trim()
     if (raw.isBlank()) return DEFAULT_BASE_URL
-    return raw.trimEnd('/')
+    raw = raw.trimEnd('/')
+    if (raw.endsWith("/chat/completions")) {
+      raw = raw.removeSuffix("/chat/completions").trimEnd('/')
+    }
+    if (raw.endsWith("/models")) {
+      raw = raw.removeSuffix("/models").trimEnd('/')
+    }
+    val uri = runCatching { java.net.URI(raw) }.getOrNull()
+    val path = uri?.path.orEmpty()
+    if (path.isEmpty() || path == "/") {
+      raw = "$raw/v1"
+    }
+    return raw
   }
 
   private val apiClient: OkHttpClient =
@@ -70,8 +84,10 @@ class CustomAiClient(
   override suspend fun fetchModels(apiKey: String): Result<List<AiModelInfo>> = withContext(Dispatchers.IO) {
     runCatching {
       val baseUrl = normalizedBaseUrl()
+      val url = "$baseUrl/models"
+      Log.i(TAG, "Fetching models from: $url")
       val request = Request.Builder()
-        .url("$baseUrl/models")
+        .url(url)
         .header("Authorization", "Bearer $apiKey")
         .get()
         .build()
@@ -79,7 +95,7 @@ class CustomAiClient(
       val response = apiClient.newCall(request).execute()
       val body = response.body.string()
 
-      if (!response.isSuccessful) throw Exception("Custom AI API error ${response.code}: ${parseError(body)}")
+      if (!response.isSuccessful) throw Exception("API error ${response.code}: ${parseError(body)}")
 
       val parsed = json.decodeFromString<CustomAiModelListResponse>(body)
       parsed.data.map { model ->
@@ -95,15 +111,20 @@ class CustomAiClient(
   override suspend fun verifyKey(apiKey: String): Result<String> = withContext(Dispatchers.IO) {
     runCatching {
       val baseUrl = normalizedBaseUrl()
+      val url = "$baseUrl/models"
+      Log.i(TAG, "Verifying key at: $url")
       val request = Request.Builder()
-        .url("$baseUrl/models")
+        .url(url)
         .header("Authorization", "Bearer $apiKey")
         .get()
         .build()
 
       val response = apiClient.newCall(request).execute()
-      if (!response.isSuccessful) throw Exception("Invalid API key or URL: HTTP ${response.code}")
-      "API key verified successfully"
+      if (!response.isSuccessful) {
+        val body = response.body.string()
+        throw Exception("HTTP ${response.code}: ${parseError(body)}")
+      }
+      "Connected to $baseUrl successfully"
     }
   }
 
@@ -116,21 +137,24 @@ class CustomAiClient(
   ): Result<AiGeneratedContent> = withContext(Dispatchers.IO) {
     runCatching {
       val baseUrl = normalizedBaseUrl()
+      val url = "$baseUrl/chat/completions"
+      Log.i(TAG, "Sending chat completion to: $url with model: $model")
+
       val requestBody = json.encodeToString(
         CustomAiChatRequest.serializer(),
         CustomAiChatRequest(
           model = model,
           messages = listOf(
-            CustomAiMessage(role = if (isReasoningModel(model)) "developer" else "system", content = instruction),
+            CustomAiMessage(role = "system", content = instruction),
             CustomAiMessage(role = "user", content = userInput),
           ),
-          temperature = options.temperature.takeUnless { isReasoningModel(model) },
-          maxCompletionTokens = options.maxTokens,
+          temperature = options.temperature.takeIf { it > 0 },
+          maxTokens = options.maxTokens,
         ),
       )
 
       val request = Request.Builder()
-        .url("$baseUrl/chat/completions")
+        .url(url)
         .header("Authorization", "Bearer $apiKey")
         .post(requestBody.toRequestBody(JSON_MEDIA_TYPE))
         .build()
@@ -138,7 +162,11 @@ class CustomAiClient(
       val response = apiClient.newCall(request).execute()
       val body = response.body.string()
 
-      if (!response.isSuccessful) throw Exception("Custom AI generate error ${response.code}: ${parseError(body)}")
+      if (!response.isSuccessful) {
+        val errMsg = parseError(body)
+        Log.e(TAG, "Chat completion failed HTTP ${response.code}: $errMsg")
+        throw Exception("API error ${response.code}: $errMsg")
+      }
 
       AiResponseParser.openAiCompatible(json, body, "Custom")
     }
@@ -149,11 +177,5 @@ class CustomAiClient(
     error.error?.message ?: body
   } catch (_: Exception) {
     body.take(200)
-  }
-
-  private fun isReasoningModel(model: String): Boolean {
-    val id = model.substringAfterLast('/').lowercase()
-    return id.startsWith("o1") || id.startsWith("o3") || id.startsWith("o4") ||
-      id.startsWith("gpt-5") || id.contains("codex")
   }
 }
