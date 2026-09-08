@@ -625,7 +625,10 @@ class PlayerActivity :
 
     getPlayableUri(intent)?.let { playableUri ->
       // Remind user if they forgot to set up yt-dlp
-      if (playableUri.startsWith("http") && !playableUri.substringAfterLast('/').contains('.')) {
+      if (playableUri.startsWith("http") &&
+        !playableUri.startsWith("http://127.0.0.1") &&
+        !playableUri.startsWith("http://localhost") &&
+        !playableUri.substringAfterLast('/').contains('.')) {
         val ytdlDir = YtdlpManager.getYtdlDir(this)
         if (!File(ytdlDir, "yt-dlp").exists()) {
           viewModel.showToast(getString(R.string.toast_need_ytdl))
@@ -3929,7 +3932,10 @@ class PlayerActivity :
     // Load the new file
     getPlayableUri(intent)?.let { uri ->
       // Remind user if they forgot to set up yt-dlp
-      if (uri.startsWith("http") && !uri.substringAfterLast('/').contains('.')) {
+      if (uri.startsWith("http") &&
+        !uri.startsWith("http://127.0.0.1") &&
+        !uri.startsWith("http://localhost") &&
+        !uri.substringAfterLast('/').contains('.')) {
         val ytdlDir = YtdlpManager.getYtdlDir(this)
         if (!File(ytdlDir, "yt-dlp").exists()) {
           viewModel.showToast(getString(R.string.toast_need_ytdl))

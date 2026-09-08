@@ -279,7 +279,8 @@ class NetworkBrowserViewModel(
   private fun buildStableStreamId(file: NetworkFile): String {
     val pathHash = Integer.toUnsignedString(file.path.hashCode(), 36)
     val sizeHash = Integer.toUnsignedString(file.size.hashCode(), 36)
-    return "network_${connectionId}_${pathHash}_$sizeHash"
+    val ext = file.name.substringAfterLast('.', "").takeIf { it.isNotBlank() }?.let { ".$it" } ?: ""
+    return "network_${connectionId}_${pathHash}_$sizeHash$ext"
   }
 
   companion object {

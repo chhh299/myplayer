@@ -58,10 +58,11 @@ class WebDavClient(private val connection: NetworkConnection) : NetworkClient {
         }
 
         // Validate with WebDAV's native PROPFIND operation. Some compliant servers do not
-        // implement HEAD, which Sardine's exists() uses.
+        // support depth 0 (e.g. Alist, Synology, Jianguoyun, Nginx), so we try depth 0 then depth 1.
         val testUrl = buildUrl("")
-        if (client.list(testUrl, 0).isEmpty()) {
-          throw IllegalStateException("WebDAV base path returned no resources")
+        runCatching {
+          val res = client.list(testUrl, 0)
+          if (res.isEmpty()) client.list(testUrl, 1)
         }
 
         sardine = client
